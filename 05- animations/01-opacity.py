@@ -1,6 +1,10 @@
 import flet as ft
 
 
+def animation_end(e):
+    print(e.data)
+
+
 def main(page: ft.Page):
 
     container = ft.Container(
@@ -8,7 +12,8 @@ def main(page: ft.Page):
         height=150,
         bgcolor='blue',
         border_radius=10,
-        animate_opacity=1000
+        animate_opacity=1000,
+        on_animation_end=animation_end
     )
 
     def animate_opacity(e):
