@@ -2,14 +2,17 @@ import flet as ft
 
 
 class Task(ft.UserControl):
-    def __init__(self, task_name, delete_task):
+    def __init__(self, task_name, task_status_change, delete_task):
         super().__init__()
+        self.completed = False
         self.task_name = task_name
+        self.task_status_change = task_status_change
         self.delete_task = delete_task
 
     def build(self):
 
-        self.chb_display_task = ft.Checkbox(value=False, label=self.task_name)
+        self.chb_display_task = ft.Checkbox(
+            value=False, label=self.task_name, on_change=self.status_changed)
         self.txt_edit_name = ft.TextField(expand=1, autofocus=True)
 
         self.row_display_view = ft.Row(
@@ -67,10 +70,15 @@ class Task(ft.UserControl):
     def delete_clicked(self, e):
         self.delete_task(self)
 
+    def status_changed(self, e):
+        self.completed = self.chb_display_task.value
+        self.task_status_change(self)
+
 
 class TodoApp(ft.UserControl):
 
     def build(self):
+        self.col_tasks = []
         self.txt_new_task = ft.TextField(
             hint_text='Que tarea deseas agregar?', expand=True, autofocus=True)
         self.btn_add_task = ft.FloatingActionButton(
@@ -78,21 +86,55 @@ class TodoApp(ft.UserControl):
 
         self.col_tasks = ft.Column()
 
+        self.tbs_filter = ft.Tabs(
+            selected_index=0,
+            on_change=self.tabs_changed,
+            tabs=[ft.Tab(text='todas'), ft.Tab(text='activa(s)'),
+                  ft.Tab(text='completada(s)')]
+        )
+
+        self.txt_items_left = ft.Text('0 tareas pendientes')
+
         return ft.Column(
             width=600,
             controls=[
+                ft.Row([
+                    ft.Text(value='Tareas', style='headlineMedium')
+                ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
                 ft.Row(
                     controls=[
                         self.txt_new_task,
                         self.btn_add_task
                     ]
                 ),
-                self.col_tasks
+                ft.Column(
+                    spacing=25,
+                    controls=[
+                        self.tbs_filter,
+                        self.col_tasks,
+                        ft.Divider(),
+                        ft.Row(
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            controls=[
+                                self.txt_items_left,
+                                ft.OutlinedButton(
+                                    icon=ft.icons.CLEANING_SERVICES,
+                                    text='Limpiar tareas completadas',
+                                    on_click=self.clear_clicked
+                                )
+                            ]
+                        )
+                    ]
+                )
             ]
         )
 
     def add_task_clicked(self, e):
-        task = Task(self.txt_new_task.value, self.delete_task)
+        task = Task(self.txt_new_task.value,
+                    self.tabs_changed, self.delete_task)
         self.col_tasks.controls.append(task)
         self.txt_new_task.focus()
         self.txt_new_task.value = ''
@@ -100,6 +142,29 @@ class TodoApp(ft.UserControl):
 
     def delete_task(self, task):
         self.col_tasks.controls.remove(task)
+        self.update()
+
+    def clear_clicked(self, e):
+        for task in self.col_tasks.controls[:]:
+            if task.completed:
+                self.delete_task(task)
+
+    def update(self):
+        status = self.tbs_filter.tabs[self.tbs_filter.selected_index].text
+        count = 0
+        for task in self.col_tasks.controls:
+            task.visible = (
+                status == 'todas'
+                or (status == 'activa(s)' and task.completed == False)
+                or (status == 'completada(s)' and task.completed)
+            )
+            if not task.completed:
+                count += 1
+
+        self.txt_items_left.value = f'{count} tarea(s) pendiente(s) '
+        super().update()
+
+    def tabs_changed(self, e):
         self.update()
 
 
